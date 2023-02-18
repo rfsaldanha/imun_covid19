@@ -1,0 +1,163 @@
+---
+title: "Pessoas vacinadas"
+author: "Raphael Saldanha"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width=12, fig.height=8)
+```
+
+## Pacotes
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(basedosdados)
+library(arrow)
+library(lubridate)
+library(hrbrthemes)
+library(viridis)
+```
+
+### Auth Google BigQuery
+
+```{r message=FALSE, warning=FALSE}
+bigrquery::bq_auth(path = "0028b0c89091.json")
+set_billing_id("brclim")
+```
+
+### Quantidade de pessoas vacinadas com alguma dose produzida pela AstraZeneca/Fiocruz
+
+
+```{r}
+# query <-  "SELECT COUNT (DISTINCT id_paciente) AS pessoas
+# FROM basedosdados.br_ms_vacinacao_covid19.microdados_vacinacao 
+# WHERE nome_fabricante = 'ASTRAZENECA/FIOCRUZ';"
+# res_01 <- read_sql(query)
+# write_parquet(res_01, "parquets/res_01.parquet")
+res_01 <- read_parquet("parquets/res_01.parquet")
+res_01
+```
+
+
+### Quantidade de pessoas que receberam alguma dose
+
+
+```{r}
+# query <-  "SELECT COUNT (DISTINCT id_paciente) AS pessoas
+# FROM basedosdados.br_ms_vacinacao_covid19.microdados_vacinacao;"
+# res_02 <- read_sql(query)
+# write_parquet(res_02, "parquets/res_02.parquet")
+res_02 <- read_parquet("parquets/res_02.parquet")
+res_02
+```
+
+
+Os dados do SI-PNI apontam que 60.686.275 pessoas foram vacinadas com alguma dose produzida pela AstraZeneca/Fiocruz, o que equivale a 36,90% da população que recebeu alguma dose de qualquer fabricante (164.473.007). 
+
+
+### Evolução no tempo
+
+```{r}
+# query <-  "SELECT data_aplicacao, nome_fabricante, COUNT (DISTINCT id_paciente) AS pessoas
+# FROM basedosdados.br_ms_vacinacao_covid19.microdados_vacinacao 
+# GROUP BY data_aplicacao, nome_fabricante;"
+# res_03 <- read_sql(query)
+# write_parquet(res_03, "parquets/res_03.parquet")
+res_03 <- read_parquet("parquets/res_03.parquet")
+```
+
+```{r}
+# query <-  "SELECT data_aplicacao, COUNT (DISTINCT id_paciente) AS universo
+# FROM basedosdados.br_ms_vacinacao_covid19.microdados_vacinacao 
+# GROUP BY data_aplicacao;"
+# res_04 <- read_sql(query)
+# write_parquet(res_04, "parquets/res_04.parquet")
+res_04 <- read_parquet("parquets/res_04.parquet")
+```
+
+```{r}
+res <- res_03 %>%
+  filter(nome_fabricante == "ASTRAZENECA/FIOCRUZ") %>%
+  select(-nome_fabricante) %>%
+  inner_join(res_04, by = "data_aplicacao") %>%
+  mutate(
+    pessoas = as.numeric(pessoas),
+    universo = as.numeric(universo),
+    perc = round(pessoas/universo, 2)
+  ) %>%
+  filter(data_aplicacao >= as.Date("2021-01-01"))
+
+ggplot(data = res, aes(x = data_aplicacao, y = perc)) +
+  geom_line(color = "blue") +
+  scale_x_date(date_breaks = "1 month",
+             date_labels = "%m/%y") +
+  scale_y_continuous(labels = scales::label_percent(), limits = c(0,1)) +
+  theme_ipsum() +
+  labs(
+    title = "Percentual por dia de pessoas que receberam alguma dose \nfabricada pela AstraZeneca/Fiocruz",
+    x = "", y = "",
+    caption = "Dados do SI-PNI",
+  )
+```
+
+```{r}
+ggplot(data = res, aes(x = data_aplicacao, y = universo)) +
+  geom_line(color = "purple") +
+  scale_x_date(date_breaks = "1 month",
+             date_labels = "%m/%y") +
+  scale_y_continuous(labels = scales::label_comma()) +
+  theme_ipsum() +
+  labs(
+    title = "Quantidade de doses aplicadas por dia",
+    subtitle = "independente do fabricante",
+    x = "", y = "",
+    caption = "Dados do SI-PNI",
+  )
+```
+
+```{r}
+res_03 %>%
+  filter(data_aplicacao >= as.Date("2021-01-01")) %>%
+  mutate(data_aplicacao = floor_date(data_aplicacao, "week")) %>%
+  group_by(data_aplicacao, nome_fabricante) %>%
+  summarise(pessoas = sum(pessoas, na.rm = TRUE)) %>%
+  ungroup() %>%
+  ggplot(aes(x = data_aplicacao, y = pessoas, fill = nome_fabricante)) +
+  geom_area(alpha=0.6 , size=.5, colour="white") +
+  scale_fill_viridis(discrete = TRUE) +
+  scale_y_continuous(labels = scales::label_comma()) +
+  scale_x_date(date_breaks = "1 month",
+             date_labels = "%m/%y") +
+  theme_ipsum() +
+  theme(legend.position = "bottom", legend.direction = "horizontal") +
+  labs(title = "Quantidade de doses aplicadas por semana",
+       subtitle = "segundo o fabricante", 
+       caption = "Dados do SI-PNI",
+       fill = "", y = "", x = "")
+```
+
+
+```{r}
+res_03 %>%
+  filter(data_aplicacao >= as.Date("2021-01-01")) %>%
+  mutate(data_aplicacao = floor_date(data_aplicacao, "week")) %>%
+  group_by(data_aplicacao, nome_fabricante) %>%
+  summarise(pessoas = sum(pessoas, na.rm = TRUE)) %>%
+  mutate(pessoas = pessoas/(sum(pessoas))) %>%
+  ungroup() %>%
+  ggplot(aes(x = data_aplicacao, y = pessoas, fill = nome_fabricante)) +
+  geom_area(alpha=0.6 , size=.5, colour="white") +
+  scale_fill_viridis(discrete = TRUE) +
+  scale_y_continuous(labels = scales::label_percent()) +
+  scale_x_date(date_breaks = "1 month",
+             date_labels = "%m/%y") +
+  theme_ipsum() +
+  theme(legend.position = "bottom", legend.direction = "horizontal") +
+  labs(title = "Percentual de doses aplicadas por semana",
+       subtitle = "segundo o fabricante",
+       caption = "Dados do SI-PNI",
+       fill = "", y = "", x = "")
+```
+
