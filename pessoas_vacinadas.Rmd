@@ -2,7 +2,7 @@
 title: "Pessoas vacinadas"
 author: "Raphael Saldanha"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-output: html_document
+output: word_document
 ---
 
 ```{r setup, include=FALSE}
@@ -54,7 +54,7 @@ res_02
 ```
 
 
-Os dados do SI-PNI apontam que 60.686.275 pessoas foram vacinadas com alguma dose produzida pela AstraZeneca/Fiocruz, o que equivale a 36,90% da população que recebeu alguma dose de qualquer fabricante (164.473.007). 
+Os dados do SI-PNI apontam que 60.686.275 pessoas foram vacinadas com alguma dose produzida pela AstraZeneca/Fiocruz, o que equivale a 36,90% da população que recebeu alguma dose de qualquer fabricante (164.473.007), segundo dados disponibilizados pelo SI-PNI.
 
 
 ### Evolução no tempo
