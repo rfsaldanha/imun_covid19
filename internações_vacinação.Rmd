@@ -1,0 +1,345 @@
+---
+title: "Internações e vacinação"
+author: "Raphael Saldanha"
+date: "2023-02-24"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Pacotes
+
+```{r}
+library(tidyverse)
+library(arrow)
+```
+
+## Leitura dos dados
+
+### Variables schema
+
+```{r}
+date_format <- "%d/%m/%Y"
+
+var_schema <- cols(
+  DT_NOTIFIC = col_date(format = date_format),
+  SEM_NOT = col_character(),
+  DT_SIN_PRI = col_date(format = date_format),
+  SEM_PRI = col_character(),
+  SG_UF_NOT = col_character(),
+  ID_REGIONA = col_character(),
+  CO_REGIONA = col_character(),
+  ID_MUNICIP = col_character(),
+  CO_MUN_NOT = col_character(),
+  ID_UNIDADE = col_character(),
+  CO_UNI_NOT = col_character(),
+  CS_SEXO = col_character(),
+  DT_NASC = col_date(format = date_format),
+  NU_IDADE_N = col_double(),
+  TP_IDADE = col_character(),
+  COD_IDADE = col_character(),
+  CS_GESTANT = col_character(),
+  CS_RACA = col_character(),
+  CS_ESCOL_N = col_character(),
+  ID_PAIS = col_character(),
+  CO_PAIS = col_character(),
+  SG_UF = col_character(),
+  ID_RG_RESI = col_character(),
+  CO_RG_RESI = col_character(),
+  ID_MN_RESI = col_character(),
+  CO_MUN_RES = col_character(),
+  CS_ZONA = col_character(),
+  SURTO_SG = col_character(),
+  NOSOCOMIAL = col_double(),
+  AVE_SUINO = col_double(),
+  FEBRE = col_double(),
+  TOSSE = col_double(),
+  GARGANTA = col_double(),
+  DISPNEIA = col_double(),
+  DESC_RESP = col_double(),
+  SATURACAO = col_double(),
+  DIARREIA = col_double(),
+  VOMITO = col_double(),
+  OUTRO_SIN = col_double(),
+  OUTRO_DES = col_character(),
+  PUERPERA = col_double(),
+  FATOR_RISC = col_double(),
+  CARDIOPATI = col_double(),
+  HEMATOLOGI = col_double(),
+  SIND_DOWN = col_double(),
+  HEPATICA = col_double(),
+  ASMA = col_double(),
+  DIABETES = col_double(),
+  NEUROLOGIC = col_double(),
+  PNEUMOPATI = col_double(),
+  IMUNODEPRE = col_double(),
+  RENAL = col_double(),
+  OBESIDADE = col_double(),
+  OBES_IMC = col_double(),
+  OUT_MORBI = col_double(),
+  MORB_DESC = col_character(),
+  VACINA = col_double(),
+  DT_UT_DOSE = col_character(),
+  MAE_VAC = col_double(),
+  DT_VAC_MAE = col_date(format = date_format),
+  M_AMAMENTA = col_double(),
+  DT_DOSEUNI = col_date(format = date_format),
+  DT_1_DOSE = col_date(format = date_format),
+  DT_2_DOSE = col_date(format = date_format),
+  ANTIVIRAL = col_double(),
+  TP_ANTIVIR = col_double(),
+  OUT_ANTIV = col_character(),
+  DT_ANTIVIR = col_character(),
+  HOSPITAL = col_double(),
+  DT_INTERNA = col_date(format = date_format),
+  SG_UF_INTE = col_character(),
+  ID_RG_INTE = col_character(),
+  CO_RG_INTE = col_double(),
+  ID_MN_INTE = col_character(),
+  CO_MU_INTE = col_double(),
+  UTI = col_double(),
+  DT_ENTUTI = col_date(format = date_format),
+  DT_SAIDUTI = col_date(format = date_format),
+  SUPORT_VEN = col_double(),
+  RAIOX_RES = col_double(),
+  RAIOX_OUT = col_character(),
+  DT_RAIOX = col_date(format = date_format),
+  AMOSTRA = col_double(),
+  DT_COLETA = col_date(format = date_format),
+  TP_AMOSTRA = col_double(),
+  OUT_AMOST = col_character(),
+  PCR_RESUL = col_double(),
+  DT_PCR = col_date(format = date_format),
+  POS_PCRFLU = col_double(),
+  TP_FLU_PCR = col_double(),
+  PCR_FLUASU = col_double(),
+  FLUASU_OUT = col_character(),
+  PCR_FLUBLI = col_double(),
+  FLUBLI_OUT = col_character(),
+  POS_PCROUT = col_double(),
+  PCR_VSR = col_double(),
+  PCR_PARA1 = col_double(),
+  PCR_PARA2 = col_double(),
+  PCR_PARA3 = col_double(),
+  PCR_PARA4 = col_double(),
+  PCR_ADENO = col_double(),
+  PCR_METAP = col_double(),
+  PCR_BOCA = col_double(),
+  PCR_RINO = col_double(),
+  PCR_OUTRO = col_double(),
+  DS_PCR_OUT = col_character(),
+  CLASSI_FIN = col_double(),
+  CLASSI_OUT = col_character(),
+  CRITERIO = col_double(),
+  EVOLUCAO = col_double(),
+  DT_EVOLUCA = col_character(),
+  DT_ENCERRA = col_character(),
+  DT_DIGITA = col_character(),
+  HISTO_VGM = col_double(),
+  PAIS_VGM = col_character(),
+  CO_PS_VGM = col_character(),
+  LO_PS_VGM = col_character(),
+  DT_VGM = col_date(format = date_format),
+  DT_RT_VGM = col_date(format = date_format),
+  PCR_SARS2 = col_double(),
+  PAC_COCBO = col_character(),
+  PAC_DSCBO = col_character(),
+  OUT_ANIM = col_character(),
+  DOR_ABD = col_double(),
+  FADIGA = col_double(),
+  PERD_OLFT = col_double(),
+  PERD_PALA = col_double(),
+  TOMO_RES = col_double(),
+  TOMO_OUT = col_character(),
+  DT_TOMO = col_character(),
+  TP_TES_AN = col_double(),
+  DT_RES_AN = col_character(),
+  RES_AN = col_double(),
+  POS_AN_FLU = col_double(),
+  TP_FLU_AN = col_double(),
+  POS_AN_OUT = col_double(),
+  AN_SARS2 = col_double(),
+  AN_VSR = col_double(),
+  AN_PARA1 = col_character(),
+  AN_PARA2 = col_character(),
+  AN_PARA3 = col_character(),
+  AN_ADENO = col_character(),
+  AN_OUTRO = col_double(),
+  DS_AN_OUT = col_character(),
+  TP_AM_SOR = col_double(),
+  SOR_OUT = col_character(),
+  DT_CO_SOR = col_character(),
+  TP_SOR = col_double(),
+  OUT_SOR = col_character(),
+  DT_RES = col_character(),
+  RES_IGG = col_double(),
+  RES_IGM = col_double(),
+  RES_IGA = col_double(),
+  ESTRANG = col_double(),
+  VACINA_COV = col_double(),
+  DOSE_1_COV = col_date(format = date_format),
+  DOSE_2_COV = col_date(format = date_format),
+  DOSE_REF = col_date(format = date_format),
+  FAB_COV_1 = col_character(),
+  FAB_COV_2 = col_character(),
+  FAB_COVREF = col_character(),
+  LAB_PR_COV = col_character(),
+  LOTE_1_COV = col_character(),
+  LOTE_2_COV = col_character(),
+  LOTE_REF = col_character(),
+  FNT_IN_COV = col_double(),
+  DOSE_2REF = col_character(),
+  FAB_COVRF2 = col_character(),
+  LOTE_REF2 = col_character(),
+  TRAT_COV = col_double(),
+  TIPO_TRAT = col_double(),
+  OUT_TRAT = col_character(),
+  DT_TRT_COV = col_character()
+)
+```
+
+### Conversão de CSV para parquet conversio com variables schema
+
+```{r}
+# read_csv2(file = "csv_srag/INFLUD21-20-02-2023.csv", col_types = var_schema) %>%
+#   write_parquet(sink = "parquets_srag/srag_2021.parquet")
+# srag_2022 <- read_csv2(file = "csv_srag/INFLUD22-13-02-2023.csv", col_types = var_schema) %>%
+#   write_parquet(sink = "parquets_srag/srag_2022.parquet")
+# srag_2023 <- read_csv2(file = "csv_srag/INFLUD23-13-02-2023.csv", col_types = var_schema) %>%
+#   write_parquet(sink = "parquets_srag/srag_2023.parquet")
+```
+
+### Carregar parquets como dataset
+
+```{r}
+srag <- arrow::open_dataset(sources = "parquets_srag/", unify_schemas = TRUE)
+dim(srag)
+```
+
+2.310.360 casos suspeitos de SRAG reportados entre 2021, 2022 e 2023.
+
+### Dataset de referência
+
+Filtros: diagnóstico de Covid-19 confirmado, hospitalização confirmada, data válida de internação.
+
+```{r}
+srag_vac <- srag %>%
+  filter(DT_INTERNA >= as.Date("2020-01-01") & DT_INTERNA < as.Date("2024-01-01")) %>%
+  filter(HOSPITAL == 1) %>%
+  filter(CLASSI_FIN == 5) %>%
+  select(DT_INTERNA, VACINA_COV, FAB_COV_1, DOSE_1_COV, FAB_COV_2, DOSE_2_COV, FAB_COVREF, DOSE_REF)
+```
+
+```{r}
+srag_vac %>%
+  tally() %>%
+  collect()
+```
+
+Dos 2.310.360 casos suspeitos reportados no período, 1.380.499 são casos confirmados de Covid-19 e hospitalizados (59,75%).
+
+
+
+```{r}
+srag_vac %>%
+  filter(DOSE_1_COV < DT_INTERNA | DOSE_2_COV < DT_INTERNA | DOSE_REF < DT_INTERNA) %>%
+  tally() %>%
+  collect()
+```
+
+Destes, 346.598 pacientes receberam alguma vacina de Covid-19 antes da data de internação (25,11%).
+
+```{r}
+srag_vac %>%
+  filter(DOSE_1_COV < DT_INTERNA | DOSE_2_COV < DT_INTERNA | DOSE_REF < DT_INTERNA) %>%
+  collect() %>%
+  mutate(
+    dias_dose_1 = DT_INTERNA - DOSE_1_COV,
+    dias_dose_2 = DT_INTERNA - DOSE_2_COV,
+    dias_dose_r = DT_INTERNA - DOSE_REF
+  ) %>%
+  select(dias_dose_1, dias_dose_2, dias_dose_r) %>%
+  summarise(
+    media_dias_dose_1 = mean(dias_dose_1, na.rm = TRUE),
+    media_dias_dose_2 = mean(dias_dose_2, na.rm = TRUE),
+    media_dias_dose_3 = mean(dias_dose_r, na.rm = TRUE),
+  ) %>%
+  pivot_longer(cols = everything())
+```
+
+```{r}
+srag_vac %>%
+  filter(DOSE_1_COV < DT_INTERNA | DOSE_2_COV < DT_INTERNA | DOSE_REF < DT_INTERNA) %>%
+  select(FAB_COV_1, FAB_COV_2, FAB_COVREF) %>%
+  collect() %>%
+  pivot_longer(cols = everything()) %>%
+  select(name = value) %>%
+  group_by(name) %>%
+  summarise(freq = n()) %>%
+  ungroup() %>%
+  arrange(-freq)
+```
+
+```{r}
+res <- srag_vac %>%
+  filter(DOSE_1_COV < DT_INTERNA | DOSE_2_COV < DT_INTERNA | DOSE_REF < DT_INTERNA) %>%
+  select(FAB_COV_1, FAB_COV_2, FAB_COVREF) %>%
+  collect() %>%
+  mutate(
+    fiocruz_1 = str_detect(toupper(FAB_COV_1), "CRUZ"),
+    nfiocruz_1 = !str_detect(toupper(FAB_COV_1), "CRUZ"),
+    fiocruz_2 = str_detect(toupper(FAB_COV_2), "CRUZ"),
+    nfiocruz_2 = !str_detect(toupper(FAB_COV_2), "CRUZ"),
+    fiocruz_r = str_detect(toupper(FAB_COVREF), "CRUZ"),
+    nfiocruz_r = !str_detect(toupper(FAB_COVREF), "CRUZ"),
+  ) %>%
+  select(fiocruz_1, nfiocruz_1, fiocruz_2, nfiocruz_2, fiocruz_r, nfiocruz_r)
+```
+
+```{r}
+# Pessoas internadas com Covid-19 após terem recebido a primeira dose de vacina cujo fabricante tem "cruz" no nome
+sum(res$fiocruz_1, na.rm = TRUE)
+
+# Pessoas internadas com Covid-19 após terem recebido a primeira dose de vacina cujo fabricante não tem "cruz" no nome
+sum(res$nfiocruz_1, na.rm = TRUE)
+
+# Razão de pessoas internadas com Covid-19 após terem recebido a primeira dose de vacina cujo fabricante tem "cruz" no nome
+sum(res$fiocruz_1, na.rm = TRUE)/(sum(res$fiocruz_1, na.rm = TRUE) + sum(res$nfiocruz_1, na.rm = TRUE))
+```
+
+```{r}
+# Pessoas internadas com Covid-19 após terem recebido a segunda dose de vacina cujo fabricante tem "cruz" no nome
+sum(res$fiocruz_2, na.rm = TRUE)
+
+# Pessoas internadas com Covid-19 após terem recebido a segunda dose de vacina cujo fabricante não tem "cruz" no nome
+sum(res$nfiocruz_2, na.rm = TRUE)
+
+# Razão de pessoas internadas com Covid-19 após terem recebido a segunda dose de vacina cujo fabricante tem "cruz" no nome
+sum(res$fiocruz_2, na.rm = TRUE)/(sum(res$fiocruz_2, na.rm = TRUE) + sum(res$nfiocruz_2, na.rm = TRUE))
+```
+
+```{r}
+# Pessoas internadas com Covid-19 após terem recebido a segunda dose de vacina cujo fabricante tem "cruz" no nome
+sum(res$fiocruz_r, na.rm = TRUE)
+
+# Pessoas internadas com Covid-19 após terem recebido a segunda dose de vacina cujo fabricante não tem "cruz" no nome
+sum(res$nfiocruz_r, na.rm = TRUE)
+
+# Razão de pessoas internadas com Covid-19 após terem recebido a segunda dose de vacina cujo fabricante tem "cruz" no nome
+sum(res$fiocruz_r, na.rm = TRUE)/(sum(res$fiocruz_r, na.rm = TRUE) + sum(res$nfiocruz_r, na.rm = TRUE))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
