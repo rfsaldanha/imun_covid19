@@ -121,6 +121,10 @@ ggplot(data = res, aes(x = data_aplicacao, y = universo)) +
 res_03 %>%
   filter(data_aplicacao >= as.Date("2021-01-01")) %>%
   mutate(data_aplicacao = floor_date(data_aplicacao, "week")) %>%
+  mutate(nome_fabricante = case_when(
+    nome_fabricante == "ASTRAZENECA" ~ "ASTRAZENECA/FIOCRUZ",
+    TRUE ~ nome_fabricante
+  )) %>%
   group_by(data_aplicacao, nome_fabricante) %>%
   summarise(pessoas = sum(pessoas, na.rm = TRUE)) %>%
   ungroup() %>%
@@ -138,11 +142,16 @@ res_03 %>%
        fill = "", y = "", x = "")
 ```
 
+Neste gráfico, doses com o nome de fabricante "ASTRAZENECA" foram modificadas para "ASTRAZENECA/FIOCRUZ".
 
 ```{r}
 res_03 %>%
   filter(data_aplicacao >= as.Date("2021-01-01")) %>%
   mutate(data_aplicacao = floor_date(data_aplicacao, "week")) %>%
+  mutate(nome_fabricante = case_when(
+    nome_fabricante == "ASTRAZENECA" ~ "ASTRAZENECA/FIOCRUZ",
+    TRUE ~ nome_fabricante
+  )) %>%
   group_by(data_aplicacao, nome_fabricante) %>%
   summarise(pessoas = sum(pessoas, na.rm = TRUE)) %>%
   mutate(pessoas = pessoas/(sum(pessoas))) %>%
@@ -160,4 +169,6 @@ res_03 %>%
        caption = "Dados do SI-PNI",
        fill = "", y = "", x = "")
 ```
+
+Neste gráfico, doses com o nome de fabricante "ASTRAZENECA" foram modificadas para "ASTRAZENECA/FIOCRUZ".
 

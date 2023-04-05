@@ -218,11 +218,11 @@ srag <- arrow::open_dataset(sources = "parquets_srag/", unify_schemas = TRUE)
 dim(srag)
 ```
 
-2.310.360 casos suspeitos de SRAG reportados entre 2021, 2022 e 2023.
+2.310.360 casos suspeitos de SRAG reportados no Sivep_gripe entre 2021, 2022 e 2023, com até 173 colunas (o número de colunas varia segundo o ano de coleta).
 
 ### Dataset de referência
 
-Filtros: diagnóstico de Covid-19 confirmado, hospitalização confirmada, data válida de internação.
+Para referência, vamos isolar os casos confirmados de Covid-19, com hospitalização confirmada e data valida de internação. Dos 2.310.360 casos suspeitos reportados no período, 1.380.499 se enquadram neste perfil. (59,75%).
 
 ```{r}
 srag_vac <- srag %>%
@@ -238,8 +238,8 @@ srag_vac %>%
   collect()
 ```
 
-Dos 2.310.360 casos suspeitos reportados no período, 1.380.499 são casos confirmados de Covid-19 e hospitalizados (59,75%).
 
+Destes, 346.598 pacientes receberam alguma dose de vacina de Covid-19 antes da data de internação (25,11%).
 
 
 ```{r}
@@ -249,25 +249,7 @@ srag_vac %>%
   collect()
 ```
 
-Destes, 346.598 pacientes receberam alguma vacina de Covid-19 antes da data de internação (25,11%).
-
-```{r}
-srag_vac %>%
-  filter(DOSE_1_COV < DT_INTERNA | DOSE_2_COV < DT_INTERNA | DOSE_REF < DT_INTERNA) %>%
-  collect() %>%
-  mutate(
-    dias_dose_1 = DT_INTERNA - DOSE_1_COV,
-    dias_dose_2 = DT_INTERNA - DOSE_2_COV,
-    dias_dose_r = DT_INTERNA - DOSE_REF
-  ) %>%
-  select(dias_dose_1, dias_dose_2, dias_dose_r) %>%
-  summarise(
-    media_dias_dose_1 = mean(dias_dose_1, na.rm = TRUE),
-    media_dias_dose_2 = mean(dias_dose_2, na.rm = TRUE),
-    media_dias_dose_3 = mean(dias_dose_r, na.rm = TRUE),
-  ) %>%
-  pivot_longer(cols = everything())
-```
+Para isolar os casos que receberam alguma dose da AstraZeneca/Fiocruz, precisamos isolar os campos de nome do fabricante. Observa-se que não há uma padronização nos nomes, existem 3,838 variações nos nomes dos fabricantes.. 
 
 ```{r}
 srag_vac %>%
@@ -282,18 +264,59 @@ srag_vac %>%
   arrange(-freq)
 ```
 
+Inicialmente, podemos tentar isolar os casos cujo nome do fabricante tem o termo "cruz". Vamos ver quais nomes são selecionados com este filtro. Existem 744 variações de nome de fabricante que contêm o termo "cruz" em alguma posição do nome.
+
+```{r}
+srag_vac %>%
+  filter(DOSE_1_COV < DT_INTERNA | DOSE_2_COV < DT_INTERNA | DOSE_REF < DT_INTERNA) %>%
+  select(FAB_COV_1, FAB_COV_2, FAB_COVREF) %>%
+  collect() %>%
+  pivot_longer(cols = everything()) %>%
+  select(name = value) %>%
+  filter(str_detect(toupper(name), "CRUZ")) %>%
+  group_by(name) %>%
+  summarise(freq = n()) %>%
+  ungroup() %>%
+  arrange(-freq) %>% 
+  knitr::kable()
+```
+
+E também nove variações com o termo "crus", com a letra "s". São ao total 753 variações de nome de fabricante para citar a fabricante "Fiocruz".
+
+```{r}
+srag_vac %>%
+  filter(DOSE_1_COV < DT_INTERNA | DOSE_2_COV < DT_INTERNA | DOSE_REF < DT_INTERNA) %>%
+  select(FAB_COV_1, FAB_COV_2, FAB_COVREF) %>%
+  collect() %>%
+  pivot_longer(cols = everything()) %>%
+  select(name = value) %>%
+  filter(str_detect(toupper(name), "CRUS")) %>%
+  group_by(name) %>%
+  summarise(freq = n()) %>%
+  ungroup() %>%
+  arrange(-freq) %>%
+  knitr::kable()
+```
+
+Observações
+-    Variações com a letra "K" não foram encontradas na base de dados.
+-    Não foram encontrados registros com nome do fabricante contendo "Manguinhos" ou termo similar.
+
+
+Desta forma, vamos considerar o filtro [CRUZ ou CRUS] no nome do fabricante para as análises seguintes.
+
 ```{r}
 res <- srag_vac %>%
   filter(DOSE_1_COV < DT_INTERNA | DOSE_2_COV < DT_INTERNA | DOSE_REF < DT_INTERNA) %>%
   select(FAB_COV_1, FAB_COV_2, FAB_COVREF) %>%
   collect() %>%
   mutate(
-    fiocruz_1 = str_detect(toupper(FAB_COV_1), "CRUZ"),
-    nfiocruz_1 = !str_detect(toupper(FAB_COV_1), "CRUZ"),
-    fiocruz_2 = str_detect(toupper(FAB_COV_2), "CRUZ"),
-    nfiocruz_2 = !str_detect(toupper(FAB_COV_2), "CRUZ"),
-    fiocruz_r = str_detect(toupper(FAB_COVREF), "CRUZ"),
-    nfiocruz_r = !str_detect(toupper(FAB_COVREF), "CRUZ"),
+    fiocruz_1 = str_detect(toupper(FAB_COV_1), "CRUZ") | str_detect(toupper(FAB_COV_1), "CRUS"),
+    nfiocruz_1 = !(str_detect(toupper(FAB_COV_1), "CRUZ") | str_detect(toupper(FAB_COV_1), "CRUS")),
+    fiocruz_2 = str_detect(toupper(FAB_COV_2), "CRUZ") | str_detect(toupper(FAB_COV_2), "CRUS"),
+    nfiocruz_2 = !(str_detect(toupper(FAB_COV_2), "CRUZ") | str_detect(toupper(FAB_COV_2), "CRUS")),
+    fiocruz_r = str_detect(toupper(FAB_COVREF), "CRUZ") | str_detect(toupper(FAB_COVREF), "CRUS"),
+    nfiocruz_r = !(str_detect(toupper(FAB_COVREF), "CRUZ") | str_detect(toupper(FAB_COVREF), "CRUZ")),
   ) %>%
   select(fiocruz_1, nfiocruz_1, fiocruz_2, nfiocruz_2, fiocruz_r, nfiocruz_r)
 ```
@@ -310,10 +333,10 @@ sum(res$fiocruz_1, na.rm = TRUE)/(sum(res$fiocruz_1, na.rm = TRUE) + sum(res$nfi
 ```
 
 ```{r}
-# Pessoas internadas com Covid-19 após terem recebido a segunda dose de vacina cujo fabricante tem "cruz" no nome
+# Pessoas internadas com Covid-19 após terem recebido a segunda dose de vacina cujo fabricante tem "cruz ou crus" no nome
 sum(res$fiocruz_2, na.rm = TRUE)
 
-# Pessoas internadas com Covid-19 após terem recebido a segunda dose de vacina cujo fabricante não tem "cruz" no nome
+# Pessoas internadas com Covid-19 após terem recebido a segunda dose de vacina cujo fabricante não tem "cruz ou crus" no nome
 sum(res$nfiocruz_2, na.rm = TRUE)
 
 # Razão de pessoas internadas com Covid-19 após terem recebido a segunda dose de vacina cujo fabricante tem "cruz" no nome
@@ -321,13 +344,13 @@ sum(res$fiocruz_2, na.rm = TRUE)/(sum(res$fiocruz_2, na.rm = TRUE) + sum(res$nfi
 ```
 
 ```{r}
-# Pessoas internadas com Covid-19 após terem recebido a segunda dose de vacina cujo fabricante tem "cruz" no nome
+# Pessoas internadas com Covid-19 após terem recebido a segunda dose de vacina cujo fabricante tem "cruz ou crus" no nome
 sum(res$fiocruz_r, na.rm = TRUE)
 
-# Pessoas internadas com Covid-19 após terem recebido a segunda dose de vacina cujo fabricante não tem "cruz" no nome
+# Pessoas internadas com Covid-19 após terem recebido a segunda dose de vacina cujo fabricante não tem "cruz ou crus" no nome
 sum(res$nfiocruz_r, na.rm = TRUE)
 
-# Razão de pessoas internadas com Covid-19 após terem recebido a segunda dose de vacina cujo fabricante tem "cruz" no nome
+# Razão de pessoas internadas com Covid-19 após terem recebido a segunda dose de vacina cujo fabricante tem "cruz ou crus" no nome
 sum(res$fiocruz_r, na.rm = TRUE)/(sum(res$fiocruz_r, na.rm = TRUE) + sum(res$nfiocruz_r, na.rm = TRUE))
 ```
 
